@@ -16,6 +16,7 @@ Options:
   --console-log-level <lvl> Console log level (default: error)
   --download-result <res>   Download result (default: full)
   --summary-interval <sec>  Summary interval (default: 10)
+  --token <token>           HuggingFace token for private repos
   -h, --help                Show this help
 EOF
 }
@@ -47,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --console-log-level) CONSOLE_LOG_LEVEL="$2"; shift 2 ;;
     --download-result) DOWNLOAD_RESULT="$2"; shift 2 ;;
     --summary-interval) SUMMARY_INTERVAL="$2"; shift 2 ;;
+    --token) HF_TOKEN="$2"; shift 2 ;;
     -h|--help) show_help; exit 0 ;;
     *) break ;;
   esac
@@ -127,6 +129,11 @@ aria2c_args=(
   --download-result "${DOWNLOAD_RESULT:-full}"
   --summary-interval "${SUMMARY_INTERVAL:-10}"
 )
+
+if [[ -n "$HF_TOKEN" ]]; then
+  aria2c_args+=(--header "Authorization: Bearer $HF_TOKEN")
+fi
+
 aria2c "${aria2c_args[@]}"
 
 # Clean up the URL files
