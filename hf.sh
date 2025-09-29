@@ -14,13 +14,12 @@ Options:
   -d <dir>                  Download directory (default: repo_name)
   --console-log-level <lvl> Console log level (default: error)
   --download-result <res>   Download result (default: full)
-  --summary-interval <sec>  Summary interval (default: 30)
+  --summary-interval <sec>  Summary interval (default: 10)
   -h, --help                Show this help
 EOF
 }
 
 REPO_NAME="$1"
-echo "Repo name is: $REPO_NAME"
 shift
 
 if [[ "$REPO_NAME" == "-h" || "$REPO_NAME" == "--help" ]]; then
@@ -71,8 +70,7 @@ if is_dataset:
 else:
   base_url = 'https://huggingface.co/{repo_name}/resolve/main/{file}?download=true'
 
-
-files = list_repo_files(repo_name)
+files = list_repo_files(repo_name, repo_type='dataset' if is_dataset else 'model')
 with open(url_list_file, 'w') as f:
     for file in files:
         url = base_url.format(repo_name=repo_name,file=file)
@@ -80,10 +78,16 @@ with open(url_list_file, 'w') as f:
         f.write(f'  out={file}\n\n')  # ← critical: tells aria2c what to name the file
 """
 
-printf "Listing files to download...\n\n"
-cat "$URL_LIST_FILE"
+cat <<EOF
 
-echo "Initiating download for $REPO_NAME"
+$(printf '%.0s#' {1..100})
+⚡ Initiating download for: $REPO_NAME
+💾 Saving to: $PWD/${USER_DIR_PATH:-$DIR_NAME}
+$(printf '%.0s#' {1..100})
+
+EOF
+
+
 aria2c_args=(
   -x "${MAX_CONNECTION_PER_SERVER:-8}"
   -s "${SPLIT:-20}"
@@ -94,7 +98,7 @@ aria2c_args=(
   -d "${USER_DIR_PATH:-$DIR_NAME}"
   --console-log-level "${CONSOLE_LOG_LEVEL:-error}"
   --download-result "${DOWNLOAD_RESULT:-full}"
-  --summary-interval "${SUMMARY_INTERVAL:-30}"
+  --summary-interval "${SUMMARY_INTERVAL:-10}"
 )
 aria2c "${aria2c_args[@]}"
 

@@ -32,7 +32,7 @@ Fast parallel downloader for HuggingFace repositories using aria2c.
 - `-d <dir>` - Download directory (default: repo_name)
 - `--console-log-level <lvl>` - Console log level (default: error)
 - `--download-result <res>` - Download result (default: full)
-- `--summary-interval <sec>` - Summary interval (default: 30)
+- `--summary-interval <sec>` - Summary interval (default: 10)
 - `-h, --help` - Show help
 
 ## Requirements
