@@ -19,11 +19,15 @@ Fast parallel downloader for HuggingFace repositories using aria2c.
 
 # Download with custom settings
 ./hf.sh Qwen/Qwen2.5-0.5B -x 16 -s 10 -d ./models
+
+# Interactive file selection
+./hf.sh Qwen/Qwen2.5-0.5B -i
 ```
 
 ## Options
 
-- `-ds` - Download as dataset (default: model)
+- `-ds` - Download as dataset (default: disabled)
+- `-i` - Interactively select files to download (default: disabled)
 - `-x <num>` - Connections per server (default: 8)
 - `-s <num>` - Number of splits (default: 20)
 - `-k <size>` - Min split size (default: 1M)
@@ -39,3 +43,4 @@ Fast parallel downloader for HuggingFace repositories using aria2c.
 
 - aria2c
 - Python with huggingface_hub
+- fzf (for interactive mode)

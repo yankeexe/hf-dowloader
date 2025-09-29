@@ -5,7 +5,8 @@ show_help() {
 Usage: $(basename "$0") repo_name [OPTIONS]
 
 Options:
-  -ds <boolean>                       Download as dataset (default: model)
+  -ds <boolean>             Download as dataset (default: disabled)
+  -i <boolean>              Interactively select files to download (default: disabled)
   -x <num>                  Connections per server (default: 8)
   -s <num>                  Number of splits (default: 20)
   -k <size>                 Min split size (default: 1M)
@@ -36,6 +37,7 @@ fi
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -ds) REPO_TYPE=dataset; shift 1 ;;
+    -i) INTERACTIVE_MODE=true; shift 1 ;;
     -x) MAX_CONNECTION_PER_SERVER="$2"; shift 2 ;;
     -s) SPLIT="$2"; shift 2 ;;
     -k) MIN_SPLIT_SIZE="$2"; shift 2 ;;
@@ -52,9 +54,9 @@ done
 
 export REPO_TYPE="${REPO_TYPE:-model}"
 export REPO_NAME="$REPO_NAME"
-_URL_LIST_FILE=$(echo "${DIR_NAME}" | awk '{print tolower($0)}')
-export URL_LIST_FILE="$_URL_LIST_FILE".txt
 DIR_NAME=$(echo "$REPO_NAME" | cut -d '/' -f 2)
+_URL_LIST_FILE=$(echo "${DIR_NAME}" | awk '{print tolower($0)}')
+export URL_LIST_FILE=".$_URL_LIST_FILE".txt
 
 # @NOTE: remove this to use vanilla hf API
 python -c """
@@ -77,6 +79,31 @@ with open(url_list_file, 'w') as f:
         f.write(f'{url}\n')
         f.write(f'  out={file}\n\n')  # ← critical: tells aria2c what to name the file
 """
+
+handle_interaction(){
+  OUTPUT_FILE=".selected_$URL_LIST_FILE.txt"
+  selected=$(awk -F'out=' '/out=/{gsub(/^[ \t]+/, "", $2); print $2}' "$URL_LIST_FILE" | fzf --multi --prompt="Select files to download: ")
+
+  if [[ -z "$selected" ]]; then
+      echo "❌ No files selected."
+      exit 0
+  fi
+
+  > "$OUTPUT_FILE"
+
+  while read -r fname; do
+      awk -v file="$fname" '
+          $0 ~ "out="file"$" {print prev; print $0; print ""}
+          {prev=$0}' "$URL_LIST_FILE" >> "$OUTPUT_FILE"
+  done <<< "$selected"
+
+  echo "Created $OUTPUT_FILE with the selected files."
+}
+
+if [[ -n "$INTERACTIVE_MODE" ]]; then
+  handle_interaction
+  URL_LIST_FILE="$OUTPUT_FILE"
+fi
 
 cat <<EOF
 
@@ -102,5 +129,8 @@ aria2c_args=(
 )
 aria2c "${aria2c_args[@]}"
 
-# Clean up the URL file
+# Clean up the URL files
 rm "$URL_LIST_FILE"
+if [[ -n "$INTERACTIVE_MODE" && -f "$OUTPUT_FILE" ]]; then
+  rm "$OUTPUT_FILE"
+fi
