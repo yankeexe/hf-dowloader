@@ -22,6 +22,9 @@ Fast parallel downloader for HuggingFace repositories using aria2c.
 
 # Interactive file selection
 ./hf.sh Qwen/Qwen2.5-0.5B -i
+
+# Exclude specific file patterns
+./hf.sh Qwen/Qwen2.5-0.5B --exclude "*.sh,*.md,*.yaml"
 ```
 
 ## Options
@@ -37,6 +40,7 @@ Fast parallel downloader for HuggingFace repositories using aria2c.
 - `--console-log-level <lvl>` - Console log level (default: error)
 - `--download-result <res>` - Download result (default: full)
 - `--summary-interval <sec>` - Summary interval (default: 10)
+- `--exclude <patterns>` - Comma-separated glob patterns to exclude files (e.g., *.sh,*.md,*.yaml)
 - `--token <token>` - HuggingFace token for private repos
 - `-h, --help` - Show help
 

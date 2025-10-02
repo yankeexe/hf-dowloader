@@ -16,6 +16,7 @@ Options:
   --console-log-level <lvl> Console log level (default: error)
   --download-result <res>   Download result (default: full)
   --summary-interval <sec>  Summary interval (default: 10)
+  --exclude <patterns>      Comma-separated glob patterns to exclude files (e.g., *.sh,*.md,*.yaml)
   --token <token>           HuggingFace token for private repos
   -h, --help                Show this help
 EOF
@@ -48,6 +49,7 @@ while [[ $# -gt 0 ]]; do
     --console-log-level) CONSOLE_LOG_LEVEL="$2"; shift 2 ;;
     --download-result) DOWNLOAD_RESULT="$2"; shift 2 ;;
     --summary-interval) SUMMARY_INTERVAL="$2"; shift 2 ;;
+    --exclude) EXCLUDE_PATTERNS="$2"; shift 2 ;;
     --token) HF_TOKEN="$2"; shift 2 ;;
     -h|--help) show_help; exit 0 ;;
     *) break ;;
@@ -56,6 +58,7 @@ done
 
 export REPO_TYPE="${REPO_TYPE:-model}"
 export REPO_NAME="$REPO_NAME"
+export EXCLUDE_PATTERNS="${EXCLUDE_PATTERNS:-}"
 DIR_NAME=$(echo "$REPO_NAME" | cut -d '/' -f 2)
 _URL_LIST_FILE=$(echo "${DIR_NAME}" | awk '{print tolower($0)}')
 export URL_LIST_FILE=".$_URL_LIST_FILE".txt
@@ -64,10 +67,12 @@ export URL_LIST_FILE=".$_URL_LIST_FILE".txt
 python -c """
 from huggingface_hub import list_repo_files
 import os
+import fnmatch
 
 repo_name = os.getenv('REPO_NAME')
 url_list_file = os.getenv('URL_LIST_FILE')
 is_dataset = os.getenv('REPO_TYPE') == 'dataset'
+exclude_patterns = os.getenv('EXCLUDE_PATTERNS', '')
 
 if is_dataset:
   base_url = 'https://huggingface.co/datasets/{repo_name}/resolve/main/{file}?download=true'
@@ -75,11 +80,32 @@ else:
   base_url = 'https://huggingface.co/{repo_name}/resolve/main/{file}?download=true'
 
 files = list_repo_files(repo_name, repo_type='dataset' if is_dataset else 'model')
+
+# Parse exclude patterns
+exclude_list = []
+if exclude_patterns:
+    exclude_list = [pattern.strip() for pattern in exclude_patterns.split(',')]
+
+# Filter out excluded files
+filtered_files = []
+for file in files:
+    should_exclude = False
+    for pattern in exclude_list:
+        if fnmatch.fnmatch(file, pattern):
+            should_exclude = True
+            break
+    if not should_exclude:
+        filtered_files.append(file)
+
 with open(url_list_file, 'w') as f:
-    for file in files:
+    for file in filtered_files:
         url = base_url.format(repo_name=repo_name,file=file)
         f.write(f'{url}\n')
         f.write(f'  out={file}\n\n')  # ← critical: tells aria2c what to name the file
+
+if exclude_patterns:
+    excluded_count = len(files) - len(filtered_files)
+    print(f'✅ Excluded {excluded_count} files matching patterns: {exclude_patterns}')
 """
 
 handle_interaction(){
